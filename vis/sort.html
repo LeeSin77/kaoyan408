@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="xB1SIIixywthe6vjBG2BJJ">
+<head data-page-node-id="nPJ8AVqNh6Y3Zgv97Bmdzf">
+<meta charset="UTF-8" data-page-node-id="WSfOoSkyfeKgLBmHo24YpP">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="KEExc0TYJVpB8fpa8XN9qI">
+<title>排序算法可视化演示 - 408 考研学习系统</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#ffffff; --border:#e5e7eb; --text:#1f2937; --muted:#6b7280;
+    --default:#94a3b8; --compare:#f59e0b; --swap:#ef4444; --pivot:#8b5cf6;
+    --sorted:#22c55e; --active:#3b82f6; --brand:#2563eb;
+    --code-bg:#f8fafc; --code-line:#cbd5e1;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  header{
+    background:var(--panel); border-bottom:1px solid var(--border);
+    padding:14px 24px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+  }
+  header h1{font-size:17px; margin:0; font-weight:600; letter-spacing:.3px;}
+  header .sub{font-size:12px; color:var(--muted); margin-left:2px;}
+  .tabs{display:flex; gap:6px; margin-left:auto; flex-wrap:wrap;}
+  .tab{
+    border:1px solid var(--border); background:var(--panel); color:var(--muted);
+    padding:6px 14px; border-radius:6px; cursor:pointer; font-size:13px; transition:.15s;
+  }
+  .tab:hover{border-color:var(--brand); color:var(--brand);}
+  .tab.active{background:var(--brand); border-color:var(--brand); color:#fff;}
+
+  main{display:flex; gap:16px; padding:16px 24px 24px; align-items:flex-start; flex-wrap:wrap;}
+  .stage{flex:1 1 620px; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px;}
+  .panel{flex:0 1 360px; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px; min-width:300px;}
+
+  canvas{width:100%; display:block; border-radius:6px; background:#fff;}
+
+  .controls{display:flex; align-items:center; gap:8px; margin-top:14px; flex-wrap:wrap;}
+  button.btn{
+    border:1px solid var(--border); background:var(--panel); color:var(--text);
+    padding:7px 14px; border-radius:6px; cursor:pointer; font-size:13px; transition:.15s;
+  }
+  button.btn:hover{border-color:var(--brand); color:var(--brand);}
+  button.btn.primary{background:var(--brand); border-color:var(--brand); color:#fff;}
+  button.btn.primary:hover{opacity:.88; color:#fff;}
+  button.btn:disabled{opacity:.45; cursor:not-allowed;}
+  .ctl-group{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted);}
+  input[type=range]{width:110px; accent-color:var(--brand);}
+  input[type=number]{width:62px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:13px;}
+
+  .progress{flex:1 1 100%; height:4px; background:#eef2f7; border-radius:2px; margin-top:10px; overflow:hidden;}
+  .progress > i{display:block; height:100%; background:var(--brand); width:0; transition:width .1s linear;}
+
+  h3{font-size:13px; margin:0 0 8px; color:var(--muted); font-weight:600; letter-spacing:.5px;}
+  .stats{display:flex; gap:10px; margin-bottom:12px;}
+  .stat{flex:1; background:var(--code-bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px;}
+  .stat .k{font-size:11px; color:var(--muted);}
+  .stat .v{font-size:19px; font-weight:600; font-variant-numeric:tabular-nums;}
+
+  pre.code{
+    margin:0; background:var(--code-bg); border:1px solid var(--border); border-radius:8px;
+    padding:10px 0; font-size:12.5px; line-height:1.75; overflow-x:auto;
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+  }
+  pre.code .ln{display:block; padding:0 12px; border-left:3px solid transparent; white-space:pre;}
+  pre.code .ln.hl{background:#e0edff; border-left-color:var(--brand); color:#1e40af; font-weight:600;}
+  pre.code .cm{color:#94a3b8;}
+
+  .desc{
+    margin-top:12px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px;
+    padding:10px 12px; font-size:13px; line-height:1.6; min-height:44px; color:#78350f;
+  }
+  .legend{display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; font-size:12px; color:var(--muted);}
+  .legend i{display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:4px; vertical-align:-1px;}
+  .note{margin-top:12px; font-size:12px; color:var(--muted); line-height:1.7; border-top:1px dashed var(--border); padding-top:10px;}
+</style>
+</head>
+<body data-page-node-id="KOM4juD468RjCnDy4zkLpn">
+
+<header data-page-node-id="OSY45sji68xgsfptU5sh2B">
+  <div data-page-node-id="HZOTFc0fFdgzdt1gWZ2eIR">
+    <h1 data-page-node-id="0aDBDcFk1WueQtVmGbgI6Z">排序算法可视化演示</h1>
+    <span class="sub" data-page-node-id="fFJUKpzByzJizNGz17qI5E">数据结构 · 内部排序 &nbsp;|&nbsp; 支持单步 / 自动播放 / 速度调节</span>
+  </div>
+  <div class="tabs" id="tabs" data-page-node-id="GUk0JqRFQc6DoLze0Z5ata"></div>
+</header>
+
+<main data-page-node-id="ytQ033UB02f200rEcC9p7X">
+  <section class="stage" data-page-node-id="JpCoJHuDLhNQE3FhZVGOEY">
+    <canvas id="cv" height="380" data-page-node-id="9gjiRFI0SyDyUcftb7Td2l"></canvas>
+    <div class="controls" data-page-node-id="UvQNzAUf9sKXDHHF9uUqWM">
+      <button class="btn" id="btnReset" data-page-node-id="mg85E3CLrLKO7wU6xLwFzk">⟲ 重置</button>
+      <button class="btn" id="btnPrev" data-page-node-id="8yGsXqhKahbaKVGt4rQlKs">◀ 上一步</button>
+      <button class="btn primary" id="btnPlay" data-page-node-id="uLw1m1jSgHqS1rTqXBpyDx">▶ 播放</button>
+      <button class="btn" id="btnNext" data-page-node-id="QPUXvti7Cq5BGYs1sNke5S">下一步 ▶</button>
+      <span class="ctl-group" data-page-node-id="2dG8J84NJ0gnwQSLNFfW04">速度 <input type="range" id="speed" min="1" max="10" value="5" data-page-node-id="LvkY0bTZtYl1gze00PFdGV"><span id="speedVal" data-page-node-id="CCbcT333HeFuW8ACieaxBa">5×</span></span>
+      <span class="ctl-group" data-page-node-id="kZt5JxIx7w691O3DweaPyu">数量 <input type="number" id="size" min="6" max="40" value="16" data-page-node-id="xfSttsmaS8kpldrenisGZq"></span>
+      <button class="btn" id="btnRand" data-page-node-id="oQ4K4wxFGtz8dBixlCyMER">🎲 随机</button>
+    </div>
+    <div class="progress" data-page-node-id="QXkJoItCZNPuPAnUq5kBVR"><i id="bar" data-page-node-id="keEUYgykGYbww0nmnUEA7J"></i></div>
+  </section>
+
+  <aside class="panel" data-page-node-id="7Nf0ptNUFSt1YAEcYw8hfE">
+    <h3 data-page-node-id="KOWzUaWh4izEyTFBdWZ77g">执行统计</h3>
+    <div class="stats" data-page-node-id="f246xQG34PAMLlbzc0LfYi">
+      <div class="stat" data-page-node-id="xddiKiQbVBBvsi5DDW26qY"><div class="k" data-page-node-id="Si8SgNkIZZKr7pIkV7gNm7">比较次数</div><div class="v" id="cmp" data-page-node-id="5I1YTLzSSUg1SPJo3OsyhD">0</div></div>
+      <div class="stat" data-page-node-id="obthD6MEwoVRgq2ciCarb9"><div class="k" data-page-node-id="XPzCrCSBCZBGRI70EwKHPA">移动/交换</div><div class="v" id="swp" data-page-node-id="NbyiWczSeLb1hLUe42Y34C">0</div></div>
+      <div class="stat" data-page-node-id="IGYepp5zVeJtf6weICYhEg"><div class="k" data-page-node-id="2wnExa7dQAfHsey5FRjYMt">步骤</div><div class="v" id="step" data-page-node-id="89kUw6qXiDt6zVt9LjBAU8">0/0</div></div>
+    </div>
+    <h3 data-page-node-id="hO9PlbUWisyTQrJNmRz399">算法伪代码（当前高亮行）</h3>
+    <pre class="code" id="code" data-page-node-id="60szedcl11VF4iaUkOpUC9"></pre>
+    <div class="desc" id="desc" data-page-node-id="DjbREiCFuj4kQzFzIrVr6x">点击「播放」开始演示。</div>
+    <div class="legend" data-page-node-id="mmmcErlDoshez8wIHfv0fe">
+      <span data-page-node-id="r8HofNhfK6gOCXUrO56goG"><i style="background:var(--default)" data-page-node-id="wdtDNQpWdD2Dy9EgSxGgeH"></i>未处理</span>
+      <span data-page-node-id="FohJrIdkmgv5Rg6dlyBq0I"><i style="background:var(--compare)" data-page-node-id="SYwMFloDbCtGLb4ea3p9b8"></i>正在比较</span>
+      <span data-page-node-id="wA5dHGWa1Tdox6od4GX2hr"><i style="background:var(--swap)" data-page-node-id="k4MqpqNq8lLKW5E5qrurBR"></i>发生交换</span>
+      <span data-page-node-id="3oozW8k3ALqzq8CDHoKGnm"><i style="background:var(--pivot)" data-page-node-id="9NHvnT9c0grIT7JsYan7st"></i>基准 pivot</span>
+      <span data-page-node-id="XFqbZo5AP4hb7P1XPsF9kS"><i style="background:var(--active)" data-page-node-id="YWuVcf4RbZFOBTT2dSpNdG"></i>当前区间</span>
+      <span data-page-node-id="T5AmPeeYOkyUU7cBw2A1JB"><i style="background:var(--sorted)" data-page-node-id="LTTAGnJL6QupHxi4KYpeC9"></i>已就位</span>
+    </div>
+    <div class="note" id="note" data-page-node-id="5cCWrYHhgvhXWXJ1G9g1OL"></div>
+  </aside>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================ 颜色与常量 ============================ */
+var C = {
+  def:'#94a3b8', cmp:'#f59e0b', swap:'#ef4444', pivot:'#8b5cf6',
+  sorted:'#22c55e', active:'#3b82f6', text:'#1f2937', muted:'#6b7280', grid:'#eef2f7'
+};
+
+/* ============================ 伪代码定义 ============================ */
+var PSEUDO = {
+  bubble:[
+    'for i = 0 .. n-2:',
+    '  for j = 0 .. n-2-i:',
+    '    if A[j] > A[j+1]:',
+    '      swap(A[j], A[j+1])',
+    '  if 本趟无交换: break',
+    '// 排序完成'
+  ],
+  quick:[
+    '// QUICKSORT(A, l, r)',
+    'if l >= r: return',
+    '  p = PARTITION(A, l, r)',
+    '  QUICKSORT(A, l, p-1)',
+    '  QUICKSORT(A, p+1, r)',
+    '// PARTITION(A, l, r)',
+    'pivot = A[r];  i = l',
+    'for j = l .. r-1:',
+    '  if A[j] < pivot:',
+    '    swap(A[i], A[j]); i = i + 1',
+    'swap(A[i], A[r]); return i'
+  ],
+  merge:[
+    '// MERGE-SORT(A, l, r)',
+    'if l >= r: return',
+    '  m = (l + r) / 2',
+    '  MERGE-SORT(A, l, m)',
+    '  MERGE-SORT(A, m+1, r)',
+    '  MERGE(A, l, m, r)',
+    '// MERGE(A, l, m, r)',
+    'i = l; j = m+1; k = l',
+    'while i <= m and j <= r:',
+    '  if A[i] <= A[j]: B[k++] = A[i++]',
+    '  else:            B[k++] = A[j++]',
+    '将 B[l..r] 拷回 A[l..r]',
+    '// 排序完成'
+  ],
+  heap:[
+    '// HEAP-SORT(A)',
+    'for i = n/2-1 downto 0: SIFT-DOWN(A, i, n)',
+    'for end = n-1 downto 1:',
+    '  swap(A[0], A[end])',
+    '  SIFT-DOWN(A, 0, end)',
+    '// SIFT-DOWN(A, i, size)',
+    'largest = i; l = 2i+1; r = 2i+2',
+    'if l < size and A[l] > A[largest]: largest = l',
+    'if r < size and A[r] > A[largest]: largest = r',
+    'if largest == i: return',
+    'swap(A[i], A[largest]); i = largest; goto 6',
+    '// 排序完成'
+  ]
+};
+
+var NOTES = {
+  bubble:'<b>冒泡排序</b>　每一趟把当前未排序区间的最大元素「浮」到末尾。稳定排序；最好情况（已有序）一趟即止，时间复杂度 O(n)，平均与最坏 O(n²)，空间 O(1)。<br><b>考点：</b>比较次数恒为 n(n-1)/2（最坏），交换次数等于逆序对数。',
+  quick:'<b>快速排序</b>　分治。每趟选一个 pivot，把小于它的换到左边，然后 pivot 归位，递归处理左右两半。<br><b>考点：</b>平均 O(nlogn)、最坏 O(n²)（已有序时退化）；<b>不稳定</b>；递归深度决定空间复杂度 O(logn)~O(n)。pivot 选取（三数取中/随机化）是常考优化。',
+  merge:'<b>归并排序</b>　分治。先递归排好左右两半，再用双指针把两个<b>有序</b>序列合并到一个辅助数组，最后拷回。<br><b>考点：</b>时间 O(nlogn) 且与输入无关（最好最坏都是）；<b>稳定</b>；需要 O(n) 辅助空间。这是它区别于快排/堆排的关键。',
+  heap:'<b>堆排序</b>　先把数组建成<b>大顶堆</b>，再反复把堆顶（最大值）与末尾交换、缩小堆并下沉调整。<br><b>考点：</b>时间 O(nlogn)（建堆 O(n) + n-1 次下沉 O(nlogn)）；<b>不稳定</b>；空间 O(1)。适合「取TopK」场景。'
+};
+
+/* ============================ 步骤录制器 ============================
+   每个算法把执行过程录制为 steps 数组，每个 step 是一个完整快照：
+   { arr, cmp, swap, line, desc, compare[], swapIdx[], pivot, sorted[], range[], aux[], auxActive }
+   录制模式的好处：播放 / 单步 / 回退 / 跳步全部变成数组下标操作，逻辑极简且不会出错。
+=================================================================== */
+
+function recBubble(src){
+  var a = src.slice(), n = a.length, steps = [], cmp = 0, swp = 0;
+  var sorted = [];
+  function push(line, desc, st){
+    steps.push({arr:a.slice(), cmp:cmp, swap:swp, line:line, desc:desc,
+      compare:st&&st.compare||[], swapIdx:st&&st.swapIdx||[], pivot:-1,
+      sorted:sorted.slice(), range:[], aux:null, auxActive:-1});
+  }
+  for(var i=0;i<n-1;i++){
+    var swapped = false;
+    for(var j=0;j<n-1-i;j++){
+      cmp++;
+      push(2, '比较 A['+j+']='+a[j]+' 与 A['+(j+1)+']='+a[j+1]+
+        (a[j] > a[j+1] ? ' → 逆序，需要交换' : ' → 顺序正确'),
+        {compare:[j,j+1]});
+      if(a[j] > a[j+1]){
+        var t=a[j]; a[j]=a[j+1]; a[j+1]=t; swp++; swapped = true;
+        push(3, '交换 A['+j+'] 与 A['+(j+1)+']，较大的 '+a[j]+' 继续向后移动',
+          {swapIdx:[j,j+1]});
+      }
+    }
+    sorted.unshift(n-1-i);
+    if(!swapped){
+      push(5, '本趟未发生交换，序列已有序，提前结束。共 '+(i+1)+' 趟。', {});
+      for(var k=0;k<n;k++) if(sorted.indexOf(k)<0) sorted.push(k);
+      break;
+    }
+    push(4, '第 '+(i+1)+' 趟结束，A['+(n-1-i)+']='+a[n-1-i]+' 已就位', {});
+  }
+  if(sorted.length < n){ for(var m=0;m<n;m++) if(sorted.indexOf(m)<0) sorted.push(m); }
+  push(5, '排序完成。', {});
+  return steps;
+}
+
+function recQuick(src){
+  var a = src.slice(), steps = [], cmp = 0, swp = 0, sorted = [];
+  function push(line, desc, st){
+    steps.push({arr:a.slice(), cmp:cmp, swap:swp, line:line, desc:desc,
+      compare:st&&st.compare||[], swapIdx:st&&st.swapIdx||[],
+      pivot:(st&&st.pivot!=null)?st.pivot:-1,
+      sorted:sorted.slice(), range:(st&&st.range)||[], aux:null, auxActive:-1});
+  }
+  function partition(l, r){
+    var pivot = a[r];
+    push(6, '划分区间 ['+l+', '+r+']，选取基准 pivot = A['+r+'] = '+pivot, {pivot:r, range:[l,r]});
+    var i = l;
+    for(var j=l;j<r;j++){
+      cmp++;
+      push(8, '比较 A['+j+']='+a[j]+' 与 pivot='+pivot+
+        (a[j] < pivot ? ' → 小于基准，应放左侧' : ' → 不小于基准，跳过'),
+        {pivot:r, range:[l,r], compare:[j]});
+      if(a[j] < pivot){
+        if(i !== j){
+          var t=a[i]; a[i]=a[j]; a[j]=t; swp++;
+          push(9, 'A['+j+'] < pivot，交换 A['+i+'] 与 A['+j+']，i 前进到 '+(i+1),
+            {pivot:r, range:[l,r], swapIdx:[i,j]});
+        } else {
+          push(9, 'A['+j+'] < pivot 且 i==j，无需交换，i 前进到 '+(i+1),
+            {pivot:r, range:[l,r]});
+        }
+        i++;
+      }
+    }
+    if(i !== r){
+      var t2=a[i]; a[i]=a[r]; a[r]=t2; swp++;
+      push(10, '基准归位：交换 A['+i+'] 与 A['+r+']，pivot='+pivot+' 落到下标 '+i+
+        '（左侧均小于它，右侧均不小于它）', {pivot:i, range:[l,r], swapIdx:[i,r]});
+    } else {
+      push(10, '基准原本就在下标 '+i+'，无需交换', {pivot:i, range:[l,r]});
+    }
+    sorted.push(i);
+    return i;
+  }
+  function qs(l, r){
+    if(l >= r){
+      if(l === r && sorted.indexOf(l) < 0) sorted.push(l);
+      push(1, '区间 ['+l+', '+r+'] 长度 ≤ 1，直接返回', {});
+      return;
+    }
+    push(2, '递归处理区间 ['+l+', '+r+']', {range:[l,r]});
+    var p = partition(l, r);
+    push(3, '递归左半区 ['+l+', '+(p-1)+']', {range:[l,p-1]});
+    qs(l, p-1);
+    push(4, '递归右半区 ['+(p+1)+', '+r+']', {range:[p+1,r]});
+    qs(p+1, r);
+  }
+  qs(0, a.length-1);
+  for(var z=0;z<a.length;z++) if(sorted.indexOf(z)<0) sorted.push(z);
+  push(10, '排序完成。', {});
+  return steps;
+}
+
+function recMerge(src){
+  var a = src.slice(), n = a.length, steps = [], cmp = 0, swp = 0, sorted = [];
+  function push(line, desc, st){
+    steps.push({arr:a.slice(), cmp:cmp, swap:swp, line:line, desc:desc,
+      compare:st&&st.compare||[], swapIdx:st&&st.swapIdx||[], pivot:-1,
+      sorted:sorted.slice(), range:(st&&st.range)||[],
+      aux:st&&st.aux?st.aux.slice():null, auxActive:(st&&st.auxActive!=null)?st.auxActive:-1});
+  }
+  function merge(l, m, r){
+    var B = [];
+    for(var z=0;z<n;z++) B.push(null);
+    var i = l, j = m+1, k = l;
+    push(7, '合并有序段 ['+l+', '+m+'] 与 ['+(m+1)+', '+r+']，准备辅助数组 B', {range:[l,r]});
+    while(i <= m && j <= r){
+      cmp++;
+      push(9, '比较 A['+i+']='+a[i]+' 与 A['+j+']='+a[j]+
+        (a[i] <= a[j] ? ' → 取左段元素' : ' → 取右段元素'),
+        {range:[l,r], compare:[i,j]});
+      if(a[i] <= a[j]) B[k++] = a[i++];
+      else B[k++] = a[j++];
+      push(10, '写入 B['+(k-1)+'] = '+B[k-1], {range:[l,r], aux:B, auxActive:k-1});
+    }
+    while(i <= m){ B[k++] = a[i++]; push(10, '左段剩余元素直接拷入 B['+(k-1)+']', {range:[l,r], aux:B, auxActive:k-1}); }
+    while(j <= r){ B[k++] = a[j++]; push(10, '右段剩余元素直接拷入 B['+(k-1)+']', {range:[l,r], aux:B, auxActive:k-1}); }
+    for(var t=l;t<=r;t++){ a[t] = B[t]; swp++; }
+    push(11, '将 B['+l+'..'+r+'] 拷回 A['+l+'..'+r+']，该区间现在整体有序', {range:[l,r], aux:B, auxActive:-1});
+  }
+  function ms(l, r){
+    if(l >= r){ push(1, '区间 ['+l+', '+r+'] 长度 ≤ 1，天然有序，返回', {range:[l,r]}); return; }
+    var m = Math.floor((l+r)/2);
+    push(2, '对 ['+l+', '+r+'] 取中点 m = '+m, {range:[l,r]});
+    ms(l, m);
+    ms(m+1, r);
+    push(5, '左右两段均已有序，执行 MERGE(A, '+l+', '+m+', '+r+')', {range:[l,r]});
+    merge(l, m, r);
+    for(var x=l;x<=r;x++) if(sorted.indexOf(x)<0) sorted.push(x);
+  }
+  ms(0, n-1);
+  for(var y=0;y<n;y++) if(sorted.indexOf(y)<0) sorted.push(y);
+  push(12, '排序完成。', {});
+  return steps;
+}
+
+function recHeap(src){
+  var a = src.slice(), n = a.length, steps = [], cmp = 0, swp = 0, sorted = [];
+  function push(line, desc, st){
+    steps.push({arr:a.slice(), cmp:cmp, swap:swp, line:line, desc:desc,
+      compare:st&&st.compare||[], swapIdx:st&&st.swapIdx||[], pivot:-1,
+      sorted:sorted.slice(), range:[], heapSize:(st&&st.heapSize!=null)?st.heapSize:n,
+      aux:null, auxActive:-1});
+  }
+  function siftDown(i, size){
+    while(true){
+      var largest = i, l = 2*i+1, r = 2*i+2;
+      push(6, '下沉调整：考察下标 '+i+'（值 '+a[i]+'），左右孩子 '+
+        (l<size?('A['+l+']='+a[l]):'无')+' / '+(r<size?('A['+r+']='+a[r]):'无'),
+        {heapSize:size, compare:[i]});
+      if(l < size){ cmp++; if(a[l] > a[largest]) largest = l; }
+      if(r < size){ cmp++; if(a[r] > a[largest]) largest = r; }
+      if(largest === i){
+        push(9, '下标 '+i+' 已满足大顶堆性质，停止下沉', {heapSize:size, compare:[i]});
+        break;
+      }
+      var t=a[i]; a[i]=a[largest]; a[largest]=t; swp++;
+      push(10, 'A['+largest+'] 更大，交换 A['+i+'] 与 A['+largest+']，继续向下考察',
+        {heapSize:size, swapIdx:[i,largest]});
+      i = largest;
+    }
+  }
+  push(1, '阶段一：建大顶堆。从最后一个非叶子结点 i = '+(Math.floor(n/2)-1)+' 开始向前调整', {});
+  for(var i=Math.floor(n/2)-1;i>=0;i--){ siftDown(i, n); }
+  push(1, '建堆完成，堆顶 A[0]='+a[0]+' 为全局最大值', {heapSize:n});
+  for(var end=n-1;end>0;end--){
+    var t2=a[0]; a[0]=a[end]; a[end]=t2; swp++;
+    sorted.unshift(end);
+    push(3, '阶段二：堆顶 A[0]='+a[end]+' 与末尾 A['+end+'] 交换，最大值归位到下标 '+end,
+      {heapSize:end, swapIdx:[0,end]});
+    siftDown(0, end);
+  }
+  if(sorted.indexOf(0)<0) sorted.unshift(0);
+  push(11, '排序完成。', {heapSize:0});
+  return steps;
+}
+
+/* ============================ 算法注册表 ============================ */
+var ALGOS = [
+  {key:'bubble', name:'冒泡排序',  fn:recBubble, code:'bubble',
+   cmp:'O(n²)', best:'O(n)', avg:'O(n²)', space:'O(1)', stable:'稳定'},
+  {key:'quick',  name:'快速排序',  fn:recQuick,  code:'quick',
+   cmp:'O(nlogn)', best:'O(nlogn)', avg:'O(nlogn)', worst:'O(n²)', space:'O(logn)', stable:'不稳定'},
+  {key:'merge',  name:'归并排序',  fn:recMerge,  code:'merge',
+   cmp:'O(nlogn)', best:'O(nlogn)', avg:'O(nlogn)', worst:'O(nlogn)', space:'O(n)', stable:'稳定'},
+  {key:'heap',   name:'堆排序',    fn:recHeap,   code:'heap',
+   cmp:'O(nlogn)', best:'O(nlogn)', avg:'O(nlogn)', worst:'O(nlogn)', space:'O(1)', stable:'不稳定'}
+];
+
+/* ============================ 状态 ============================ */
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var cur = ALGOS[1];
+var base = [];
+var steps = [];
+var idx = 0;
+var timer = null;
+
+function randArray(n){
+  var arr = [], used = {};
+  while(arr.length < n){
+    var v = 5 + Math.floor(Math.random()*95);
+    if(!used[v]){ used[v] = 1; arr.push(v); }
+  }
+  return arr;
+}
+
+function rebuild(keepData){
+  if(!keepData || base.length !== (+document.getElementById('size').value)){
+    base = randArray(+document.getElementById('size').value || 16);
+  }
+  steps = cur.fn(base);
+  idx = 0;
+  renderCode();
+  render();
+}
+
+/* ============================ 渲染：伪代码 ============================ */
+function renderCode(){
+  var lines = PSEUDO[cur.code];
+  var html = '';
+  var curLine = steps[idx] ? steps[idx].line : -1;
+  for(var i=0;i<lines.length;i++){
+    var cls = (i === curLine) ? 'ln hl' : 'ln';
+    if(lines[i].indexOf('//') === 0) cls += ' cm';
+    html += '<span class="'+cls+'">'+esc(lines[i])+'</span>';
+  }
+  document.getElementById('code').innerHTML = html;
+  var el = document.querySelector('#code .hl');
+  if(el){
+    var box = document.getElementById('code');
+    var top = el.offsetTop - box.clientHeight/2 + el.clientHeight/2;
+    box.scrollTop = Math.max(0, top);
+  }
+}
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ============================ 渲染：Canvas ============================ */
+function render(){
+  var dpr = window.devicePixelRatio || 1;
+  var W = cv.clientWidth;
+  var H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  var s = steps[idx];
+  if(!s) return;
+  var a = s.arr, n = a.length;
+  var hasAux = !!s.aux;
+  var padT = 34, padB = 30;
+  var auxH = hasAux ? 46 : 0;
+  var areaH = H - padT - padB - auxH;
+  var maxV = Math.max.apply(null, a);
+  var gap = n > 30 ? 2 : (n > 20 ? 4 : 6);
+  var bw = (W - gap*(n-1)) / n;
+  var x0 = 0;
+
+  // 区间底纹
+  if(s.range && s.range.length === 2 && s.range[1] >= s.range[0]){
+    var rx = x0 + s.range[0]*(bw+gap) - gap/2;
+    var rw = (s.range[1]-s.range[0]+1)*(bw+gap);
+    ctx.fillStyle = 'rgba(59,130,246,0.07)';
+    ctx.fillRect(Math.max(0,rx), padT-14, Math.min(rw, W-Math.max(0,rx)), areaH + 24);
+    ctx.fillStyle = 'rgba(59,130,246,0.5)';
+    ctx.font = '11px -apple-system,sans-serif';
+    ctx.fillText('当前区间 ['+s.range[0]+', '+s.range[1]+']', Math.max(2,rx+2), padT-4);
+  }
+
+  // 堆边界线
+  if(s.heapSize != null && s.heapSize >= 0 && s.heapSize < n){
+    var hx = x0 + s.heapSize*(bw+gap);
+    ctx.strokeStyle = '#cbd5e1'; ctx.setLineDash([4,3]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(hx, padT-10); ctx.lineTo(hx, padT+areaH+10); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = C.muted; ctx.font = '11px -apple-system,sans-serif';
+    ctx.fillText('堆大小 '+s.heapSize, Math.min(hx+4, W-56), padT-4);
+  }
+
+  for(var i=0;i<n;i++){
+    var h = Math.max(3, (a[i]/maxV) * areaH);
+    var x = x0 + i*(bw+gap);
+    var y = padT + areaH - h;
+    var color = C.def;
+
+    if(s.sorted && s.sorted.indexOf(i) >= 0) color = C.sorted;
+    if(s.compare && s.compare.indexOf(i) >= 0) color = C.cmp;
+    if(s.swapIdx && s.swapIdx.indexOf(i) >= 0) color = C.swap;
+    if(s.pivot === i) color = C.pivot;
+
+    ctx.fillStyle = color;
+    roundRect(x, y, bw, h, Math.min(3, bw/2));
+    ctx.fill();
+
+    // 数值
+    ctx.fillStyle = (h > 22) ? '#ffffff' : C.text;
+    ctx.font = (n > 30 ? '9px' : (n > 22 ? '10px' : '11px')) + ' -apple-system,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(a[i], x + bw/2, (h > 22) ? y + h/2 + 4 : y - 5);
+    ctx.textAlign = 'left';
+
+    // 下标（数量少时才画，避免拥挤）
+    if(n <= 24){
+      ctx.fillStyle = C.muted;
+      ctx.font = '10px -apple-system,sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(i, x + bw/2, padT + areaH + 14);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  // 辅助数组 B（归并排序）
+  if(hasAux){
+    var by = padT + areaH + 26;
+    ctx.fillStyle = C.muted; ctx.font = '11px -apple-system,sans-serif';
+    ctx.fillText('辅助数组 B：', 2, by + 14);
+    var bx0 = 84, bcell = Math.min(22, (W - bx0 - 4)/n);
+    for(var k=0;k<n;k++){
+      var bx = bx0 + k*bcell;
+      ctx.fillStyle = (k === s.auxActive) ? C.active : '#e2e8f0';
+      ctx.fillRect(bx, by, bcell-2, 20);
+      if(s.aux[k] != null){
+        ctx.fillStyle = (k === s.auxActive) ? '#fff' : C.text;
+        ctx.font = '10px -apple-system,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(s.aux[k], bx + (bcell-2)/2, by + 14);
+        ctx.textAlign = 'left';
+      }
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, bcell-2, 20);
+    }
+  }
+
+  // 统计与说明同步
+  document.getElementById('cmp').textContent = s.cmp;
+  document.getElementById('swp').textContent = s.swap;
+  document.getElementById('step').textContent = idx + ' / ' + (steps.length-1);
+  document.getElementById('desc').innerHTML = '<b>步骤 '+(idx+1)+'：</b>' + esc(s.desc);
+  document.getElementById('bar').style.width = (steps.length<2?0:(idx/(steps.length-1)*100)) + '%';
+  document.getElementById('btnPrev').disabled = (idx === 0);
+  document.getElementById('btnNext').disabled = (idx >= steps.length-1);
+}
+
+function roundRect(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h); ctx.lineTo(x, y+h);
+  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+/* ============================ 播放控制 ============================ */
+function play(){
+  if(timer) return;
+  if(idx >= steps.length-1) idx = 0;
+  document.getElementById('btnPlay').textContent = '⏸ 暂停';
+  var sp = +document.getElementById('speed').value;
+  var delay = Math.round(900 / sp);
+  timer = setInterval(function(){
+    if(idx >= steps.length-1){ stop(); return; }
+    idx++; renderCode(); render();
+  }, delay);
+}
+function stop(){
+  if(timer){ clearInterval(timer); timer = null; }
+  document.getElementById('btnPlay').textContent = '▶ 播放';
+}
+
+/* ============================ 事件绑定 ============================ */
+var tabsBox = document.getElementById('tabs');
+ALGOS.forEach(function(al){
+  var b = document.createElement('button');
+  b.className = 'tab' + (al === cur ? ' active' : '');
+  b.textContent = al.name;
+  b.onclick = function(){
+    stop();
+    cur = al;
+    [].forEach.call(tabsBox.children, function(c){ c.className = 'tab'; });
+    b.className = 'tab active';
+    document.getElementById('note').innerHTML =
+      NOTES[al.key] + '<br><br><b>复杂度：</b>平均 '+al.avg+'，空间 '+al.space+'，'+al.stable+
+      (al.best ? ('，最好 '+al.best) : '') + (al.worst ? ('，最坏 '+al.worst) : '');
+    rebuild(false);
+  };
+  tabsBox.appendChild(b);
+});
+
+document.getElementById('btnPlay').onclick = function(){ timer ? stop() : play(); };
+document.getElementById('btnNext').onclick = function(){ stop(); if(idx<steps.length-1){ idx++; renderCode(); render(); } };
+document.getElementById('btnPrev').onclick = function(){ stop(); if(idx>0){ idx--; renderCode(); render(); } };
+document.getElementById('btnReset').onclick = function(){ stop(); idx=0; renderCode(); render(); };
+document.getElementById('btnRand').onclick = function(){ stop(); base = randArray(+document.getElementById('size').value||16); rebuild(true); };
+document.getElementById('speed').oninput = function(){
+  document.getElementById('speedVal').textContent = this.value + '×';
+  if(timer){ stop(); play(); }
+};
+document.getElementById('size').onchange = function(){
+  var v = Math.max(6, Math.min(40, +this.value || 16));
+  this.value = v; stop(); rebuild(false);
+};
+window.addEventListener('resize', function(){ render(); });
+
+/* 初始化 */
+document.getElementById('size').value = 16;
+document.getElementById('note').innerHTML =
+  NOTES.quick + '<br><br><b>复杂度：</b>平均 O(nlogn)，最坏 O(n²)，空间 O(logn)，不稳定';
+rebuild(false);
+})();
+</script>
+</body>
+</html>

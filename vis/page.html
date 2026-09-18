@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>页面置换算法可视化 - 408 考研学习系统</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#fff; --border:#e5e7eb; --text:#1f2937; --muted:#6b7280;
+    --brand:#2563eb; --code-bg:#f8fafc; --hit:#22c55e; --fault:#ef4444;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;}
+  header{background:var(--panel);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+  header h1{font-size:17px;margin:0;font-weight:600;}
+  header .sub{font-size:12px;color:var(--muted);margin-left:2px;}
+  .tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center;}
+  .tab{border:1px solid var(--border);background:var(--panel);color:var(--muted);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;transition:.15s;}
+  .tab:hover{border-color:var(--brand);color:var(--brand);}
+  .tab.active{background:var(--brand);border-color:var(--brand);color:#fff;}
+  .q-ctl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-left:6px;}
+  .q-ctl input{width:56px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;}
+
+  main{display:flex;gap:16px;padding:16px 24px 24px;align-items:flex-start;flex-wrap:wrap;}
+  .stage{flex:1 1 620px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0;}
+  .panel{flex:0 1 360px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;min-width:300px;}
+
+  .table-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--border);}
+  table.mx{border-collapse:collapse;font-size:13px;margin:0;}
+  table.mx th,table.mx td{border:1px solid var(--border);min-width:40px;height:40px;text-align:center;padding:0 4px;}
+  table.mx th.ref{background:var(--code-bg);color:var(--text);font-weight:600;}
+  table.mx td.f{border-color:#eef2f7;color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
+  table.mx td.f.hit{background:#f0fdf4;color:#16a34a;}
+  table.mx td.f.fault{background:#fef2f2;color:#dc2626;}
+  table.mx td.f.empty{color:#d1d5db;font-weight:400;}
+  table.mx td.fault-mark{background:#fef2f2;color:#dc2626;font-weight:700;}
+  table.mx td.hit-mark{color:#d1d5db;}
+  table.mx td.label{background:var(--code-bg);color:var(--muted);font-weight:600;min-width:64px;}
+  table.mx td.cur-col{outline:2px solid var(--brand);outline-offset:-2px;}
+
+  .controls{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  button.btn{border:1px solid var(--border);background:var(--panel);color:var(--text);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;transition:.15s;}
+  button.btn:hover{border-color:var(--brand);color:var(--brand);}
+  button.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;}
+  button.btn.primary:hover{opacity:.88;color:#fff;}
+  button.btn:disabled{opacity:.45;cursor:not-allowed;}
+  .ctl-group{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);}
+  input[type=range]{width:110px;accent-color:var(--brand);}
+  .progress{flex:1 1 100%;height:4px;background:#eef2f7;border-radius:2px;margin-top:10px;overflow:hidden;}
+  .progress>i{display:block;height:100%;background:var(--brand);width:0;transition:width .1s linear;}
+
+  h3{font-size:13px;margin:0 0 8px;color:var(--muted);font-weight:600;letter-spacing:.5px;}
+  .stats{display:flex;gap:10px;margin-bottom:12px;}
+  .stat{flex:1;background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
+  .stat .k{font-size:11px;color:var(--muted);}
+  .stat .v{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;}
+
+  pre.code{margin:0;background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:10px 0;font-size:12.5px;line-height:1.75;overflow-x:auto;font-family:"SF Mono",Menlo,Consolas,monospace;}
+  pre.code .ln{display:block;padding:0 12px;border-left:3px solid transparent;white-space:pre;}
+  pre.code .ln.hl{background:#e0edff;border-left-color:var(--brand);color:#1e40af;font-weight:600;}
+
+  .desc{margin-top:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.6;min-height:44px;color:#78350f;}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted);}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
+  .note{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.7;border-top:1px dashed var(--border);padding-top:10px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>页面置换算法可视化</h1>
+    <span class="sub">操作系统 · 内存管理 &nbsp;|&nbsp; FIFO / LRU / OPT，帧矩阵 + 缺页率统计</span>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="q-ctl">页框数 <input type="number" id="frames" value="3" min="3" max="5"></div>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="table-wrap" id="tableWrap"></div>
+    <div class="controls">
+      <button class="btn" id="btnReset">⟲ 重置</button>
+      <button class="btn" id="btnPrev">◀ 上一步</button>
+      <button class="btn primary" id="btnPlay">▶ 播放</button>
+      <button class="btn" id="btnNext">下一步 ▶</button>
+      <span class="ctl-group">速度 <input type="range" id="speed" min="1" max="10" value="6"><span id="speedVal">6×</span></span>
+    </div>
+    <div class="progress"><i id="bar"></i></div>
+  </section>
+
+  <aside class="panel">
+    <h3>统计</h3>
+    <div class="stats">
+      <div class="stat"><div class="k">缺页次数</div><div class="v" id="fault">0</div></div>
+      <div class="stat"><div class="k">缺页率</div><div class="v" id="rate">—</div></div>
+      <div class="stat"><div class="k">访问序号</div><div class="v" id="stepNo">0/0</div></div>
+    </div>
+    <h3>算法伪代码（当前高亮行）</h3>
+    <pre class="code" id="code"></pre>
+    <div class="desc" id="desc">点击「播放」开始演示。</div>
+    <div class="legend">
+      <span><i style="background:var(--fault)"></i>缺页（F）</span>
+      <span><i style="background:var(--hit)"></i>命中</span>
+      <span><i style="background:#d1d5db"></i>空页框</span>
+    </div>
+    <div class="note" id="note"></div>
+  </aside>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+/* 经典引用串（Belady 例题） */
+var REF = [7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1];
+
+var PSEUDO = {
+  fifo:[
+    '// FIFO 先进先出置换',
+    'for 每个页面引用 r:',
+    '  if r 已在页框中: 命中，不置换',
+    '  else:',
+    '    if 有空闲页框: r 装入空页框',
+    '    else: 换出「最早进入」的页，装入 r',
+    '// 统计缺页次数 / 缺页率'
+  ],
+  lru:[
+    '// LRU 最近最少使用置换',
+    'for 每个页面引用 r:',
+    '  if r 已在页框中: 命中，更新其访问时刻',
+    '  else:',
+    '    if 有空闲页框: r 装入空页框',
+    '    else: 换出「最久未使用」的页，装入 r',
+    '// 统计缺页次数 / 缺页率'
+  ],
+  opt:[
+    '// OPT 最佳置换（理论最优）',
+    'for 每个页面引用 r:',
+    '  if r 已在页框中: 命中',
+    '  else:',
+    '    if 有空闲页框: r 装入空页框',
+    '    else: 换出「未来最久才用到」的页',
+    '// 统计缺页次数 / 缺页率'
+  ]
+};
+
+var NOTES = {
+  fifo:'<b>FIFO（先进先出）</b>　换出<u>最早进入</u>内存的页。实现最简单，但存在 <b>Belady 异常</b>：增加页框数反而使缺页次数变多（如引用串 1,2,3,4,1,2,5,1,2,3,4,5，3 帧缺页 9 次、4 帧反而 10 次）。本例 3 帧缺页 15 次。',
+  lru:'<b>LRU（最近最少使用）</b>　换出<u>最久没被访问</u>的页，用「最近使用时间戳」实现。是实际系统常用策略（近似实现如 Clock/NRU），本例 3 帧缺页 12 次。',
+  opt:'<b>OPT（最佳置换）</b>　换出<u>未来最长时间不会被使用</u>的页。缺页率理论最低（本例 3 帧缺页 9 次），但需要预知未来引用串，<u>无法实现</u>，只作为衡量其它算法的上界。'
+};
+
+var ALGOS = [
+  {key:'fifo', name:'FIFO', code:'fifo', note:NOTES.fifo},
+  {key:'lru',  name:'LRU',  code:'lru',  note:NOTES.lru},
+  {key:'opt',  name:'OPT',  code:'opt',  note:NOTES.opt}
+];
+
+/* ============================ 统一模拟 ============================ */
+function simulate(algo, fc){
+  var steps = [];
+  var frames = new Array(fc).fill(-1);
+  var queue = [];      // FIFO
+  var lastUse = {};    // LRU
+  var fault = 0;
+
+  for(var t=0; t<REF.length; t++){
+    var r = REF[t];
+    var hit = frames.indexOf(r) >= 0;
+    var replaced = -1;
+    var line = 1;
+    var desc;
+
+    if(hit){
+      if(algo === 'lru') lastUse[r] = t;
+      line = 2;
+      desc = '访问页 ' + r + '，已在页框中 → <b>命中</b>，不发生置换。';
+    } else {
+      fault++;
+      line = 3;
+      var emptyIdx = frames.indexOf(-1);
+      if(emptyIdx >= 0){
+        frames[emptyIdx] = r;
+        desc = '访问页 ' + r + '，不在页框中 → <b>缺页</b>，装入空页框 ' + (emptyIdx+1) + '。';
+      } else {
+        var evict = -1, evictIdx = -1;
+        if(algo === 'fifo'){
+          evict = queue.shift();
+          evictIdx = frames.indexOf(evict);
+        } else if(algo === 'lru'){
+          var minT = Infinity;
+          for(var k=0;k<fc;k++){
+            var lu = (lastUse[frames[k]] === undefined) ? -1 : lastUse[frames[k]];
+            if(lu < minT){ minT = lu; evict = frames[k]; evictIdx = k; }
+          }
+        } else { // opt
+          var far = -1;
+          for(var m=0;m<fc;m++){
+            var next = REF.indexOf(frames[m], t+1);
+            if(next === -1) next = REF.length + 1000;
+            if(next > far){ far = next; evict = frames[m]; evictIdx = m; }
+          }
+        }
+        replaced = evict;
+        frames[evictIdx] = r;
+        line = 5;
+        desc = '访问页 ' + r + '，页框已满 → <b>缺页</b>，换出页 ' + evict + '，装入 ' + r + '。';
+      }
+      if(algo === 'fifo') queue.push(r);
+      if(algo === 'lru') lastUse[r] = t;
+    }
+
+    steps.push({
+      t:t, ref:r, frames:frames.slice(), hit:hit, replaced:replaced,
+      faultCount:fault, line:line, desc:desc
+    });
+  }
+  return steps;
+}
+
+/* ============================ 状态 ============================ */
+var cur = ALGOS[0];
+var steps = [], idx = 0, timer = null;
+
+function fc(){ return Math.max(3, Math.min(6, +document.getElementById('frames').value || 3)); }
+
+function rebuild(){
+  steps = simulate(cur.key, fc());
+  idx = 0;
+  renderCode(); render();
+}
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderCode(){
+  var lines = PSEUDO[cur.code];
+  var curLine = steps[idx] ? steps[idx].line : -1;
+  var html = '';
+  for(var i=0;i<lines.length;i++){
+    var cls = (i === curLine) ? 'ln hl' : 'ln';
+    html += '<span class="'+cls+'">'+esc(lines[i])+'</span>';
+  }
+  document.getElementById('code').innerHTML = html;
+}
+
+/* ============================ 渲染：帧矩阵表格 ============================ */
+function renderTable(){
+  var F = fc();
+  var n = idx + 1; // 已展示的访问数
+  var html = '<table class="mx"><tr><th class="label" rowspan="'+(F+2)+'" style="min-width:56px;background:var(--code-bg);color:var(--muted);">页框</th></tr>';
+
+  // 表头：引用串
+  html += '<tr><th class="label" style="min-width:56px;background:var(--code-bg);color:var(--muted);">引用串</th>';
+  for(var t=0;t<n;t++){
+    var curCol = (t === idx) ? ' cur-col' : '';
+    html += '<th class="ref'+curCol+'">'+REF[t]+'</th>';
+  }
+  html += '</tr>';
+
+  // 帧内容行
+  for(var f=0;f<F;f++){
+    html += '<tr><td class="label">第 '+(f+1)+' 帧</td>';
+    for(var c=0;c<n;c++){
+      var s = steps[c];
+      var v = s.frames[f];
+      var cls = 'f';
+      if(v === -1){ cls += ' empty'; }
+      else if(s.hit && v === s.ref){ cls += ' hit'; }
+      else if(!s.hit && v === s.ref){ cls += ' fault'; }
+      var curCol2 = (c === idx) ? ' cur-col' : '';
+      html += '<td class="'+cls+curCol2+'">'+(v === -1 ? '—' : v)+'</td>';
+    }
+    html += '</tr>';
+  }
+
+  // 缺页标记行
+  html += '<tr><td class="label">缺页?</td>';
+  for(var d=0;d<n;d++){
+    var s2 = steps[d];
+    var mark = s2.hit ? '<span style="color:#d1d5db;">√</span>' : 'F';
+    var cls2 = s2.hit ? 'hit-mark' : 'fault-mark';
+    var curCol3 = (d === idx) ? ' cur-col' : '';
+    html += '<td class="'+cls2+curCol3+'">'+mark+'</td>';
+  }
+  html += '</tr></table>';
+
+  document.getElementById('tableWrap').innerHTML = html;
+  // 滚动到当前列
+  var wrap = document.getElementById('tableWrap');
+  var curCell = wrap.querySelector('td.cur-col, th.cur-col');
+  if(curCell){ curCell.scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'}); }
+}
+
+function render(){
+  var s = steps[idx]; if(!s) return;
+  renderTable();
+  document.getElementById('fault').textContent = s.faultCount;
+  document.getElementById('rate').textContent = (s.faultCount / (idx+1) * 100).toFixed(1) + '%';
+  document.getElementById('stepNo').textContent = (idx+1) + '/' + steps.length;
+  document.getElementById('desc').innerHTML = '<b>第 '+(idx+1)+' 次访问：</b>' + esc(s.desc);
+  document.getElementById('bar').style.width = (steps.length<2?0:(idx/(steps.length-1)*100))+'%';
+  document.getElementById('btnPrev').disabled = (idx===0);
+  document.getElementById('btnNext').disabled = (idx>=steps.length-1);
+}
+
+/* ============================ 播放控制 ============================ */
+function play(){
+  if(timer) return;
+  if(idx >= steps.length-1) idx = 0;
+  document.getElementById('btnPlay').textContent = '⏸ 暂停';
+  var sp = +document.getElementById('speed').value;
+  var delay = Math.round(650/sp);
+  timer = setInterval(function(){
+    if(idx >= steps.length-1){ stop(); return; }
+    idx++; renderCode(); render();
+  }, delay);
+}
+function stop(){ if(timer){ clearInterval(timer); timer=null; } document.getElementById('btnPlay').textContent='▶ 播放'; }
+
+/* ============================ 事件 ============================ */
+var tabsBox = document.getElementById('tabs');
+ALGOS.forEach(function(al){
+  var b = document.createElement('button');
+  b.className = 'tab' + (al===cur ? ' active' : '');
+  b.textContent = al.name;
+  b.onclick = function(){
+    stop();
+    cur = al;
+    [].forEach.call(tabsBox.children, function(c){ c.className='tab'; });
+    b.className = 'tab active';
+    document.getElementById('note').innerHTML = al.note;
+    rebuild();
+  };
+  tabsBox.appendChild(b);
+});
+
+document.getElementById('btnPlay').onclick = function(){ timer?stop():play(); };
+document.getElementById('btnNext').onclick = function(){ stop(); if(idx<steps.length-1){ idx++; renderCode(); render(); } };
+document.getElementById('btnPrev').onclick = function(){ stop(); if(idx>0){ idx--; renderCode(); render(); } };
+document.getElementById('btnReset').onclick = function(){ stop(); idx=0; renderCode(); render(); };
+document.getElementById('speed').oninput = function(){
+  document.getElementById('speedVal').textContent = this.value+'×';
+  if(timer){ stop(); play(); }
+};
+document.getElementById('frames').onchange = function(){ stop(); rebuild(); };
+
+/* 初始化 */
+document.getElementById('note').innerHTML = cur.note;
+rebuild();
+})();
+</script>
+</body>
+</html>

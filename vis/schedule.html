@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>进程调度算法可视化 - 408 考研学习系统</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#fff; --border:#e5e7eb; --text:#1f2937; --muted:#6b7280;
+    --brand:#2563eb; --code-bg:#f8fafc; --idle:#e5e7eb;
+    --p1:#3b82f6; --p2:#22c55e; --p3:#f59e0b; --p4:#8b5cf6;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;}
+  header{background:var(--panel);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+  header h1{font-size:17px;margin:0;font-weight:600;}
+  header .sub{font-size:12px;color:var(--muted);margin-left:2px;}
+  .tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center;}
+  .tab{border:1px solid var(--border);background:var(--panel);color:var(--muted);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;transition:.15s;}
+  .tab:hover{border-color:var(--brand);color:var(--brand);}
+  .tab.active{background:var(--brand);border-color:var(--brand);color:#fff;}
+  .q-ctl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-left:6px;}
+  .q-ctl input{width:56px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;}
+
+  main{display:flex;gap:16px;padding:16px 24px 24px;align-items:flex-start;flex-wrap:wrap;}
+  .stage{flex:1 1 620px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0;}
+  .panel{flex:0 1 360px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;min-width:300px;}
+
+  canvas{width:100%;display:block;border-radius:6px;background:#fff;}
+
+  .controls{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  button.btn{border:1px solid var(--border);background:var(--panel);color:var(--text);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;transition:.15s;}
+  button.btn:hover{border-color:var(--brand);color:var(--brand);}
+  button.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;}
+  button.btn.primary:hover{opacity:.88;color:#fff;}
+  button.btn:disabled{opacity:.45;cursor:not-allowed;}
+  .ctl-group{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);}
+  input[type=range]{width:110px;accent-color:var(--brand);}
+  .progress{flex:1 1 100%;height:4px;background:#eef2f7;border-radius:2px;margin-top:10px;overflow:hidden;}
+  .progress>i{display:block;height:100%;background:var(--brand);width:0;transition:width .1s linear;}
+
+  h3{font-size:13px;margin:0 0 8px;color:var(--muted);font-weight:600;letter-spacing:.5px;}
+  .stats{display:flex;gap:10px;margin-bottom:12px;}
+  .stat{flex:1;background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
+  .stat .k{font-size:11px;color:var(--muted);}
+  .stat .v{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;}
+
+  table.tb{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:10px;}
+  table.tb th,table.tb td{border:1px solid var(--border);padding:5px 7px;text-align:center;}
+  table.tb th{background:var(--code-bg);color:var(--muted);font-weight:600;}
+  table.tb td.over{background:#fef2f2;color:#b91c1c;font-weight:600;}
+  .queue{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 4px;min-height:22px;align-items:center;}
+  .chip{display:inline-block;padding:2px 9px;border-radius:4px;font-size:12px;color:#fff;font-weight:600;}
+  .chip.idle{background:var(--idle);color:var(--muted);}
+
+  pre.code{margin:0;background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:10px 0;font-size:12.5px;line-height:1.75;overflow-x:auto;font-family:"SF Mono",Menlo,Consolas,monospace;}
+  pre.code .ln{display:block;padding:0 12px;border-left:3px solid transparent;white-space:pre;}
+  pre.code .ln.hl{background:#e0edff;border-left-color:var(--brand);color:#1e40af;font-weight:600;}
+
+  .desc{margin-top:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.6;min-height:44px;color:#78350f;}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted);}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
+  .note{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.7;border-top:1px dashed var(--border);padding-top:10px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>进程调度算法可视化</h1>
+    <span class="sub">操作系统 · 处理机调度 &nbsp;|&nbsp; FCFS / SJF / RR 对比，甘特图 + 周转时间统计</span>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="q-ctl" id="qBox" style="display:none;">时间片 q = <input type="number" id="quantum" value="2" min="1" max="5"></div>
+</header>
+
+<main>
+  <section class="stage">
+    <canvas id="cv" height="300"></canvas>
+    <div class="controls">
+      <button class="btn" id="btnReset">⟲ 重置</button>
+      <button class="btn" id="btnPrev">◀ 上一步</button>
+      <button class="btn primary" id="btnPlay">▶ 播放</button>
+      <button class="btn" id="btnNext">下一步 ▶</button>
+      <span class="ctl-group">速度 <input type="range" id="speed" min="1" max="10" value="5"><span id="speedVal">5×</span></span>
+    </div>
+    <div class="progress"><i id="bar"></i></div>
+  </section>
+
+  <aside class="panel">
+    <h3>就绪队列（队首 → 队尾）</h3>
+    <div class="queue" id="queue"></div>
+    <h3>执行统计</h3>
+    <div class="stats">
+      <div class="stat"><div class="k">平均周转时间</div><div class="v" id="avgTat">—</div></div>
+      <div class="stat"><div class="k">平均带权周转</div><div class="v" id="avgWtat">—</div></div>
+      <div class="stat"><div class="k">时刻</div><div class="v" id="clock">0</div></div>
+    </div>
+    <h3>各进程完成情况</h3>
+    <table class="tb" id="tb"></table>
+    <h3>算法伪代码（当前高亮行）</h3>
+    <pre class="code" id="code"></pre>
+    <div class="desc" id="desc">点击「播放」开始演示。</div>
+    <div class="legend">
+      <span><i style="background:var(--p1)"></i>P1</span>
+      <span><i style="background:var(--p2)"></i>P2</span>
+      <span><i style="background:var(--p3)"></i>P3</span>
+      <span><i style="background:var(--p4)"></i>P4</span>
+      <span><i style="background:var(--idle)"></i>CPU 空闲</span>
+    </div>
+    <div class="note" id="note"></div>
+  </aside>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+var PROC_COLOR = {P1:'#3b82f6', P2:'#22c55e', P3:'#f59e0b', P4:'#8b5cf6', idle:'#e5e7eb'};
+var PROC_TEXT  = {idle:'#6b7280'};
+
+/* 经典例题：4 个进程（到达时间, 执行时间） */
+var PROCESSES = [
+  {id:'P1', at:0, bt:5},
+  {id:'P2', at:1, bt:3},
+  {id:'P3', at:2, bt:8},
+  {id:'P4', at:3, bt:2}
+];
+
+var PSEUDO = {
+  fcfs:[
+    '// FCFS 先来先服务（非抢占）',
+    'while 就绪队列非空:',
+    '  p = 队首进程出队',
+    '  让 p 运行至完成（不被抢占）',
+    '  记录 p 完成时间 / 周转 / 带权周转',
+    '// 输出平均周转时间'
+  ],
+  sjf:[
+    '// SJF 短作业优先（非抢占）',
+    'while 还有未完成进程:',
+    '  从「已到达」进程中选执行时间最短者 p',
+    '  让 p 运行至完成（不被抢占）',
+    '  记录 p 完成时间 / 周转 / 带权周转',
+    '// 输出平均周转时间'
+  ],
+  rr:[
+    '// RR 时间片轮转（抢占）',
+    'while 还有未完成进程:',
+    '  p = 队首进程出队',
+    '  p 运行 min(时间片 q, 剩余执行时间)',
+    '  if p 未完成: 把 p 重新加入队尾',
+    '  else: 记录 p 完成时间 / 周转 / 带权周转',
+    '// 输出平均周转时间'
+  ]
+};
+
+var NOTES = {
+  fcfs:'<b>FCFS（先来先服务）</b>　按到达顺序排成一个队列，谁先到谁先上 CPU，一旦上 CPU 就<u>运行到完成</u>（非抢占）。<br><b>考点：</b>实现简单、公平；但短作业排在长作业后会出现「护航效应」，导致平均周转时间偏长。非抢占式调度。',
+  sjf:'<b>SJF（短作业优先）</b>　每次 CPU 空闲时，从<u>已到达</u>的进程里选执行时间最短的那个（非抢占）。<br><b>考点：</b>可证明平均周转时间<u>最小</u>；但长作业可能长期得不到 CPU（「饥饿」）。非抢占式。',
+  rr:'<b>RR（时间片轮转）</b>　按时间片 q 轮流执行。进程用完一个时间片还没结束，就被放回队尾继续等。<br><b>考点：</b>是<u>抢占式</u>、响应时间好；q 太大会退化为 FCFS，q 太小会导致频繁上下文切换开销。常用于分时系统。'
+};
+
+var ALGOS = [
+  {key:'fcfs', name:'FCFS', fn:function(q){ return simulate('fcfs', q); }, code:'fcfs', note:NOTES.fcfs},
+  {key:'sjf',  name:'SJF',  fn:function(q){ return simulate('sjf',  q); }, code:'sjf',  note:NOTES.sjf},
+  {key:'rr',   name:'RR',   fn:function(q){ return simulate('rr',   q); }, code:'rr',   note:NOTES.rr}
+];
+
+/* ============================ 统一逐 tick 模拟 ============================
+   每个时间单位（tick）产生一个 step 快照，便于逐帧播放/单步/回退。
+   step = { time, running, queue[], gantt[{pid,start,end}], done{pid:{ct,tat,wtat}}, line, desc }
+=================================================================== */
+function simulate(algo, quantum){
+  var procs = PROCESSES.map(function(p){ return {id:p.id, at:p.at, bt:p.bt}; });
+  var sorted = procs.slice().sort(function(a,b){ return a.at - b.at; });
+  var remain = {}, bt = {};
+  procs.forEach(function(p){ remain[p.id] = p.bt; bt[p.id] = p.bt; });
+
+  var queue = [], gantt = [], done = {};
+  var cur = null, curStart = 0, sliceLeft = 0;
+  var pi = 0, t = 0;
+  var steps = [];
+  var n = procs.length;
+
+  function atOf(pid){ for(var i=0;i<procs.length;i++) if(procs[i].id===pid) return procs[i].at; return 0; }
+
+  function closeSegment(pid, start, end){
+    var last = gantt[gantt.length-1];
+    if(last && last.pid === pid && last.end === start){ last.end = end; }
+    else { gantt.push({pid:pid, start:start, end:end}); }
+  }
+  function cloneDone(){ var r={}; for(var k in done) r[k]={ct:done[k].ct,tat:done[k].tat,wtat:done[k].wtat}; return r; }
+  function cloneGantt(){ return gantt.map(function(g){ return {pid:g.pid,start:g.start,end:g.end}; }); }
+
+  function avgTat(){ var ks=Object.keys(done); if(!ks.length) return null; var s=0; ks.forEach(function(k){s+=done[k].tat;}); return s/ks.length; }
+  function avgWtat(){ var ks=Object.keys(done); if(!ks.length) return null; var s=0; ks.forEach(function(k){s+=done[k].wtat;}); return s/ks.length; }
+
+  function push(line, desc){
+    steps.push({
+      time:t, running:cur?cur:'idle', queue:queue.slice(),
+      gantt:cloneGantt(), done:cloneDone(),
+      avgTat:avgTat(), avgWtat:avgWtat(),
+      line:line, desc:desc
+    });
+  }
+
+  while(Object.keys(done).length < n){
+    var events = [];
+    // 1) 到达进程入队
+    while(pi < sorted.length && sorted[pi].at <= t){
+      queue.push(sorted[pi].id); pi++;
+      events.push(sorted[pi-1].id + ' 到达，进入就绪队列');
+    }
+    var line = 0;
+    var picked = null;
+    // 2) 需要调度（CPU 空闲且有待运行进程）
+    if(cur === null && queue.length > 0){
+      if(algo === 'sjf'){
+        // 从队列中选 bt 最小者（并列取到达早/下标小者）
+        var bi = 0;
+        for(var i=1;i<queue.length;i++){
+          if(remain[queue[i]] < remain[queue[bi]] || (remain[queue[i]] === remain[queue[bi]] && atOf(queue[i]) < atOf(queue[bi]))) bi = i;
+        }
+        picked = queue.splice(bi,1)[0];
+        events.push('从已到达进程中选执行时间最短的 ' + picked);
+      } else {
+        picked = queue.shift();
+        events.push(picked + ' 出队，获得 CPU');
+      }
+      cur = picked; curStart = t; sliceLeft = quantum;
+    }
+    // 3) 本 tick 运行
+    if(cur !== null){
+      remain[cur]--; sliceLeft--;
+      line = 3;
+      if(remain[cur] === 0){
+        // 完成
+        var ct = t + 1;
+        closeSegment(cur, curStart, ct);
+        done[cur] = {
+          ct: ct,
+          tat: ct - atOf(cur),
+          wtat: (ct - atOf(cur)) / bt[cur]
+        };
+        events.push(cur + ' 执行完毕，完成时间=' + ct + '，周转=' + done[cur].tat);
+        line = 4;
+        cur = null;
+      } else if(algo === 'rr' && sliceLeft === 0){
+        // 时间片用完，抢占
+        closeSegment(cur, curStart, t+1);
+        queue.push(cur);
+        events.push(cur + ' 时间片用完，重新入队尾');
+        line = 5;
+        cur = null;
+      }
+    } else {
+      // CPU 空闲
+      closeSegment('idle', t, t+1);
+      if(events.length === 0) events.push('CPU 空闲等待进程到达');
+      line = (algo==='sjf') ? 2 : 1;
+    }
+
+    push(line, events.join('；'));
+    t++;
+  }
+
+  // 末尾补一个完成态 step
+  push(6, '所有进程调度完毕。平均周转时间=' + (avgTat()!=null?avgTat().toFixed(2):'-'));
+  return steps;
+}
+
+/* ============================ 状态 ============================ */
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var cur = ALGOS[0];
+var steps = [], idx = 0, timer = null;
+
+function q(){ return Math.max(1, Math.min(9, +document.getElementById('quantum').value || 2)); }
+
+function rebuild(){
+  steps = cur.fn(q());
+  idx = 0;
+  renderCode(); render();
+}
+
+/* ============================ 渲染：伪代码 ============================ */
+function renderCode(){
+  var lines = PSEUDO[cur.code];
+  var curLine = steps[idx] ? steps[idx].line : -1;
+  var html = '';
+  for(var i=0;i<lines.length;i++){
+    var cls = (i === curLine) ? 'ln hl' : 'ln';
+    html += '<span class="'+cls+'">'+esc(lines[i])+'</span>';
+  }
+  document.getElementById('code').innerHTML = html;
+}
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ============================ 渲染：队列 + 表格 + 统计 ============================ */
+function renderPanel(s){
+  // 就绪队列
+  var qbox = document.getElementById('queue');
+  if(s.queue.length === 0){
+    qbox.innerHTML = '<span style="color:var(--muted);font-size:12px;">（空）</span>';
+  } else {
+    qbox.innerHTML = s.queue.map(function(pid){
+      return '<span class="chip" style="background:'+PROC_COLOR[pid]+'">'+pid+'</span>';
+    }).join('');
+  }
+
+  // 完成表
+  var tb = document.getElementById('tb');
+  var head = '<tr><th>进程</th><th>到达</th><th>执行</th><th>完成</th><th>周转</th><th>带权</th></tr>';
+  var rows = PROCESSES.map(function(p){
+    var d = s.done[p.id];
+    return '<tr>'
+      + '<td style="color:'+PROC_COLOR[p.id]+';font-weight:600;">'+p.id+'</td>'
+      + '<td>'+p.at+'</td><td>'+p.bt+'</td>'
+      + (d
+          ? '<td>'+d.ct+'</td><td>'+d.tat+'</td><td>'+d.wtat.toFixed(2)+'</td>'
+          : '<td colspan="3" style="color:#cbd5e1;">运行中</td>')
+      + '</tr>';
+  }).join('');
+  tb.innerHTML = head + rows;
+
+  document.getElementById('avgTat').textContent = s.avgTat != null ? s.avgTat.toFixed(2) : '—';
+  document.getElementById('avgWtat').textContent = s.avgWtat != null ? s.avgWtat.toFixed(2) : '—';
+  document.getElementById('clock').textContent = s.time;
+}
+
+/* ============================ 渲染：甘特图 ============================ */
+function renderGantt(s){
+  var dpr = window.devicePixelRatio || 1;
+  var W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  var total = PROCESSES.reduce(function(a,p){ return a+p.bt; },0);
+  var padL = 50, padR = 20, padT = 20, barTop = padT + 26, barH = 56;
+  var axisW = W - padL - padR;
+  var unit = axisW / total;
+  var endT = s.time;
+
+  // 时间刻度
+  ctx.strokeStyle = '#e5e7eb'; ctx.fillStyle = '#6b7280';
+  ctx.font = '11px -apple-system,sans-serif'; ctx.textAlign = 'center';
+  for(var k=0;k<=total;k++){
+    var x = padL + k*unit;
+    ctx.strokeStyle = '#eef2f7'; ctx.beginPath(); ctx.moveTo(x, barTop-4); ctx.lineTo(x, barTop+barH+8); ctx.stroke();
+    ctx.fillStyle = '#9ca3af'; ctx.fillText(k, x, barTop + barH + 22);
+  }
+
+  // 甘特图分段（只画到当前时刻 endT）
+  var segs = [];
+  s.gantt.forEach(function(g){
+    var a = Math.max(g.start, 0), b = Math.min(g.end, endT);
+    if(b > a) segs.push({pid:g.pid, start:a, end:b});
+  });
+
+  ctx.textAlign = 'center';
+  segs.forEach(function(seg){
+    var x = padL + seg.start*unit;
+    var w = (seg.end - seg.start)*unit;
+    var pid = seg.pid;
+    var color = PROC_COLOR[pid] || '#e5e7eb';
+    ctx.fillStyle = color;
+    roundRect(x, barTop, Math.max(w,1), barH, 4); ctx.fill();
+
+    if(pid === 'idle'){
+      ctx.fillStyle = '#9ca3af';
+      ctx.fillText('空闲', x + w/2, barTop + barH/2 + 4);
+    } else if(w > 22){
+      ctx.fillStyle = '#fff'; ctx.font = '12px -apple-system,sans-serif';
+      ctx.fillText(pid, x + w/2, barTop + barH/2 + 4);
+    }
+    if(w > 34){
+      ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = '10px -apple-system,sans-serif';
+      ctx.fillText(seg.start, x + 6, barTop + 12);
+      ctx.fillText(seg.end, x + w - 6, barTop + barH - 8);
+    }
+  });
+
+  // 运行中进程高亮边框
+  if(s.running !== 'idle' && s.gantt.length){
+    var last = s.gantt[s.gantt.length-1];
+    if(last.pid === s.running){
+      var lx = padL + last.start*unit, lw = (Math.min(last.end,endT)-last.start)*unit;
+      ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(lx, barTop, lw, barH);
+    }
+  }
+
+  // 当前时刻游标
+  var cx = padL + endT*unit;
+  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, barTop-8); ctx.lineTo(cx, barTop+barH+16); ctx.stroke();
+  ctx.fillStyle = '#ef4444'; ctx.font = '11px -apple-system,sans-serif';
+  ctx.fillText('t='+endT, cx, barTop-12);
+  ctx.textAlign = 'left';
+}
+
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h); ctx.lineTo(x,y+h); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+/* ============================ 总渲染 ============================ */
+function render(){
+  var s = steps[idx]; if(!s) return;
+  renderGantt(s);
+  renderPanel(s);
+  document.getElementById('desc').innerHTML = '<b>t='+s.time+'：</b>'+esc(s.desc);
+  document.getElementById('bar').style.width = (steps.length<2?0:(idx/(steps.length-1)*100))+'%';
+  document.getElementById('btnPrev').disabled = (idx===0);
+  document.getElementById('btnNext').disabled = (idx>=steps.length-1);
+}
+
+/* ============================ 播放控制 ============================ */
+function play(){
+  if(timer) return;
+  if(idx >= steps.length-1) idx = 0;
+  document.getElementById('btnPlay').textContent = '⏸ 暂停';
+  var sp = +document.getElementById('speed').value;
+  var delay = Math.round(700/sp);
+  timer = setInterval(function(){
+    if(idx >= steps.length-1){ stop(); return; }
+    idx++; renderCode(); render();
+  }, delay);
+}
+function stop(){ if(timer){ clearInterval(timer); timer=null; } document.getElementById('btnPlay').textContent='▶ 播放'; }
+
+/* ============================ 事件 ============================ */
+var tabsBox = document.getElementById('tabs');
+ALGOS.forEach(function(al){
+  var b = document.createElement('button');
+  b.className = 'tab' + (al===cur ? ' active' : '');
+  b.textContent = al.name;
+  b.onclick = function(){
+    stop();
+    cur = al;
+    [].forEach.call(tabsBox.children, function(c){ c.className='tab'; });
+    b.className = 'tab active';
+    document.getElementById('qBox').style.display = (al.key==='rr') ? 'flex' : 'none';
+    document.getElementById('note').innerHTML = al.note;
+    rebuild();
+  };
+  tabsBox.appendChild(b);
+});
+
+document.getElementById('btnPlay').onclick = function(){ timer?stop():play(); };
+document.getElementById('btnNext').onclick = function(){ stop(); if(idx<steps.length-1){ idx++; renderCode(); render(); } };
+document.getElementById('btnPrev').onclick = function(){ stop(); if(idx>0){ idx--; renderCode(); render(); } };
+document.getElementById('btnReset').onclick = function(){ stop(); idx=0; renderCode(); render(); };
+document.getElementById('speed').oninput = function(){
+  document.getElementById('speedVal').textContent = this.value+'×';
+  if(timer){ stop(); play(); }
+};
+document.getElementById('quantum').onchange = function(){ stop(); rebuild(); };
+window.addEventListener('resize', function(){ render(); });
+
+/* 初始化 */
+document.getElementById('note').innerHTML = cur.note;
+rebuild();
+})();
+</script>
+</body>
+</html>
